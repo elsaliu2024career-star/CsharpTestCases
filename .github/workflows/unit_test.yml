@@ -21,8 +21,14 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: "8.0.x"
 
       # 3. Run NUnit tests
+      - name: Restore dependencies
+        run: dotnet restore ./MyApp.Tests/MyApp.Tests.sln
+
+      - name: Build solution
+        run: dotnet build ./MyApp.Tests/MyApp.Tests.sln --configuration Release --no-restore
+
       - name: Run NUnit tests
-        run: dotnet test ./MyApp.Tests/MyApp.Tests.csproj
+        run: dotnet test ./MyApp.Tests/MyApp.Tests.sln --configuration Release --no-build --logger "trx;LogFileName=test_results.trx"
