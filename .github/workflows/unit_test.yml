@@ -25,5 +25,4 @@ jobs:
 
       # 3. Run NUnit tests
       - name: Run NUnit tests
-        run: dotnet test
-        working-directory: ./MyApp.Tests
+        run: dotnet test ./MyApp.Tests/MyApp.Tests.csproj
