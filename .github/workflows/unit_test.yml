@@ -25,5 +25,5 @@ jobs:
 
       # 3. Run NUnit tests
       - name: Run NUnit tests
-        run: dotnet test --configuration Release --no-build --logger "trx;LogFileName=test_results.trx"
+        run: dotnet test
         working-directory: ./MyApp.Tests
