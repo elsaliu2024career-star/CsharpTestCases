@@ -25,10 +25,10 @@ jobs:
 
       # 3. Run NUnit tests
       - name: Restore dependencies
-        run: dotnet restore ./MyApp.Tests/MyApp.Tests.sln
+        run: dotnet restore MyApp.Tests/MyApp.Tests.sln
 
       - name: Build solution
-        run: dotnet build ./MyApp.Tests/MyApp.Tests.sln --configuration Release --no-restore
+        run: dotnet build MyApp.Tests/MyApp.Tests.sln --configuration Release --no-restore
 
       - name: Run NUnit tests
-        run: dotnet test ./MyApp.Tests/MyApp.Tests.sln --configuration Release --no-build --logger "trx;LogFileName=test_results.trx"
+        run: dotnet test MyApp.Tests/MyApp.Tests.sln --configuration Release --no-build --logger "trx;LogFileName=test_results.trx"
