@@ -810,11 +810,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\chene\\MyApp.Core\\MyApp.Core.csproj",
+      "projectUniqueName": "C:\\Users\\chene\\GitLab\\CsharpTestCases\\MyApp.Core\\MyApp.Core.csproj",
       "projectName": "MyApp.Core",
-      "projectPath": "C:\\Users\\chene\\MyApp.Core\\MyApp.Core.csproj",
+      "projectPath": "C:\\Users\\chene\\GitLab\\CsharpTestCases\\MyApp.Core\\MyApp.Core.csproj",
       "packagesPath": "C:\\Users\\chene\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\chene\\MyApp.Core\\obj\\",
+      "outputPath": "C:\\Users\\chene\\GitLab\\CsharpTestCases\\MyApp.Core\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\chene\\AppData\\Roaming\\NuGet\\NuGet.Config"
