@@ -1,0 +1,36 @@
+name: .NET CI - NUnit Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+
+    steps:
+      # 1. Checkout source code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # 2. Setup .NET SDK (adjust version to your project)
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0.x'
+
+      # 3. Restore NuGet dependencies
+      - name: Restore dependencies
+        run: dotnet restore
+
+      # 4. Build solution
+      - name: Build solution
+        run: dotnet build --configuration Release --no-restore
+
+      # 5. Run NUnit tests
+      - name: Run NUnit tests
+        run: dotnet test --configuration Release --no-build --logger "trx;LogFileName=test_results.trx"
