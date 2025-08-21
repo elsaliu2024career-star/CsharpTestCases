@@ -23,15 +23,7 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      # 3. Restore NuGet dependencies
-      - name: Restore dependencies
-        run: dotnet restore
-
-      # 4. Build solution
-      - name: Build solution
-        run: dotnet build --configuration Release --no-restore
-
-      # 5. Run NUnit tests
+      # 3. Run NUnit tests
       - name: Run NUnit tests
         run: dotnet test --configuration Release --no-build --logger "trx;LogFileName=test_results.trx"
         working-directory: ./MyApp.Tests
