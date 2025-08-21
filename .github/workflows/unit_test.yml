@@ -16,6 +16,8 @@ jobs:
       # 1. Checkout source code
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       # 2. Setup .NET SDK (adjust version to your project)
       - name: Setup .NET
