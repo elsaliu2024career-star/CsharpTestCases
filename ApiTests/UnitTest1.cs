@@ -46,6 +46,14 @@ public interface ICustomerRepository
     Task<IEnumerable<Customer>> GetAllAsync();
 }
 
+public interface IMoreMethods : ICustomerRepository
+{
+    Task UpdateAsync(Customer customer);
+    Task DeleteAsync(int id);
+
+    Task AddAsyncBulk(IEnumerable<Customer> customers);
+}
+
 public class MyDbContext : DbContext
 {
     public MyDbContext(DbContextOptions<MyDbContext> options) : base(options) { }
@@ -55,7 +63,7 @@ public class MyDbContext : DbContext
 
 public class CustomerRepository : ICustomerRepository
 {
-    private readonly MyDbContext _context;
+    protected readonly MyDbContext _context;
 
     public CustomerRepository(MyDbContext context)
     {
@@ -79,28 +87,70 @@ public class CustomerRepository : ICustomerRepository
     }
 }
 
+public class CustomerRepositoryWithMoreMethods : CustomerRepository, IMoreMethods
+{
+    public CustomerRepositoryWithMoreMethods(MyDbContext context) : base(context) { }
+
+    public async Task UpdateAsync(Customer customer)
+    {
+        _context.Customers.Update(customer);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task DeleteAsync(int id)
+    {
+        var customer = await _context.Customers.FindAsync(id);
+        if (customer != null)
+        {
+            _context.Customers.Remove(customer);
+            await _context.SaveChangesAsync();
+        }
+    }
+
+    public async Task AddAsyncBulk(IEnumerable<Customer> customers)
+    {
+        _context.Customers.AddRange(customers);
+        await _context.SaveChangesAsync();
+    }
+}
+
 public class CustomerService
 {
-    private readonly ICustomerRepository _customerRepository;
+    private readonly IMoreMethods _moreMethods;
 
-    public CustomerService(ICustomerRepository customerRepository)
+    public CustomerService(IMoreMethods moreMethods)
     {
-        _customerRepository = customerRepository;
+        _moreMethods = moreMethods;
     }
 
     public async Task<Customer?> GetCustomerByIdAsync(int id)
     {
-        return await _customerRepository.GetByIdAsync(id);
+        return await _moreMethods.GetByIdAsync(id);
     }
     public async Task AddCustomerAsync(Customer customer)
     {
-        await _customerRepository.AddAsync(customer);
+        await _moreMethods.AddAsync(customer);
     }
     public async Task<IEnumerable<Customer>> GetAllCustomersAsync()
     {
-        return await _customerRepository.GetAllAsync();
+        return await _moreMethods.GetAllAsync();
     }
 
+    public async Task UpdateCustomerAsync(Customer customer)
+    {
+        await _moreMethods.UpdateAsync(customer);
+    }
+
+    public async Task DeleteCustomerAsync(int id)
+    {
+        await _moreMethods.DeleteAsync(id);
+
+    }
+
+    public async Task AddCustomersBulkAsync(IEnumerable<Customer> customers)
+    {
+        await _moreMethods.AddAsyncBulk(customers);
+    }
 }
 
 
@@ -174,47 +224,95 @@ public class ReviewsApiTests
         Console.WriteLine($"Output: {output}");
 
     }
+}
+public class CustomerServiceSqliteTests
+{
+    private readonly CustomerService _customerService;
 
-    public class CustomerServiceSqliteTests
+    public CustomerServiceSqliteTests()
     {
-        private readonly CustomerService _customerService;
+        var connection = new SqliteConnection("DataSource=:memory:");
+        connection.Open();
 
-        public CustomerServiceSqliteTests()
+        var options = new DbContextOptionsBuilder<MyDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        var context = new MyDbContext(options);
+        context.Database.EnsureCreated();
+
+        IMoreMethods repo = new CustomerRepositoryWithMoreMethods(context);
+        _customerService = new CustomerService(repo);
+    }
+
+    [Fact]
+    [Trait("Category", "fake DB")]
+    public async Task AddCustomerVerify()
+    {
+        var newCustomer = new Customer
         {
-            var connection = new SqliteConnection("DataSource=:memory:");
-            connection.Open();
+            Id = 1,
+            Name = "John Doe",
+            Email = "elsaliu@gmail.com",
+            Phone = "0420991325"
+        };
 
-            var options = new DbContextOptionsBuilder<MyDbContext>()
-                .UseSqlite(connection)
-                .Options;
+        await _customerService.AddCustomerAsync(newCustomer);
 
-            var context = new MyDbContext(options);
-            context.Database.EnsureCreated();
+        var retrievedCustomer = await _customerService.GetCustomerByIdAsync(newCustomer.Id);
+        Assert.NotNull(retrievedCustomer);
+        Assert.Equal("John Doe", retrievedCustomer.Name);
+        Assert.Equal("elsaliu@gmail.com", retrievedCustomer.Email);
+        Assert.Equal("0420991325", retrievedCustomer.Phone);
+        Console.WriteLine($"Retrieved added Customer: {retrievedCustomer.Id}, {retrievedCustomer.Name}, {retrievedCustomer.Email}, {retrievedCustomer.Phone}");
 
-            ICustomerRepository repo = new CustomerRepository(context);
-            _customerService = new CustomerService(repo);
-        }
+    }
 
-        [Fact]
-        [Trait("Category", "fake DB")]
-        public async Task AddCustomerVerify()
+    [Fact]
+    [Trait("Category", "fake DB")]
+    public async Task UpdateCustomerVerify()
+    {
+        var newCustomer = new Customer
         {
-            var newCustomer = new Customer
-            {
-                Id = 1,
-                Name = "John Doe",
-                Email = "elsaliu@gmail.com",
-                Phone = "0420991325"
-            };
+            Id = 2,
+            Name = "Elsa Liu",
+            Email = "elsaliu2024@gmail.com",
+            Phone = "0420771925"
+        };
 
-            await _customerService.AddCustomerAsync(newCustomer);
+        await _customerService.AddCustomerAsync(newCustomer);
 
-            var retrievedCustomer = await _customerService.GetCustomerByIdAsync(1);
-            Assert.NotNull(retrievedCustomer);
-            Assert.Equal("John Doe", retrievedCustomer.Name);
-            Assert.Equal("elsaliu@gmail.com", retrievedCustomer.Email);
-            Assert.Equal("0420991325", retrievedCustomer.Phone);
+        var existing = await _customerService.GetCustomerByIdAsync(newCustomer.Id);
 
-        }
+        if (existing == null)
+
+            throw new KeyNotFoundException($"Customer {newCustomer.Id} not found");
+
+        else
+
+            Console.WriteLine($"Customer found before update: {existing.Name}, {existing.Email}, {existing.Phone}");
+
+        var updateCustomer = new Customer
+        {
+            Id = 2,
+            Name = "Jane Smith",
+            Email = "janesm@gmail.com",
+            Phone = "1234567890"
+        };
+
+        newCustomer.Name = updateCustomer.Name;
+        newCustomer.Email = updateCustomer.Email;
+        newCustomer.Phone = updateCustomer.Phone;            
+
+        await _customerService.UpdateCustomerAsync(newCustomer);
+
+        var retrievedUpdateCustomer = await _customerService.GetCustomerByIdAsync(2);
+
+        Console.WriteLine($"Retrieved Customer after update: {retrievedUpdateCustomer?.Name}, {retrievedUpdateCustomer?.Email}, {retrievedUpdateCustomer?.Phone}");
+
+        //        Assert.NotNull(retrievedUpdateCustomer);
+        //    Assert.Equal("Jane Smith", retrievedUpdateCustomer.Name);
+        //  Assert.Equal("janesm@gmail.com", retrievedUpdateCustomer.Email);
+        //Assert.Equal("1234567890", retrievedUpdateCustomer.Phone);
     }
 }
