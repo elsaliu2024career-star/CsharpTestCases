@@ -9,6 +9,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Sqlite;
 using Microsoft.EntityFrameworkCore.InMemory;
 using Microsoft.Data.Sqlite;
+using Npgsql;
+using System.Data;
 
 
 public class NameListInfo
@@ -154,10 +156,12 @@ public class CustomerService
 }
 
 // api with real DB test
-public class ReviewsApiTests
+public class RealApiDBTests
 {
     private readonly HttpClient _client;
-    public ReviewsApiTests()
+    private const string DbConnectionString = "Host=172.20.10.2;Port=5432;Username=dev;Password=mypassword;Database=namecard";
+
+    public RealApiDBTests()
     {
         _client = new HttpClient { BaseAddress = new Uri("http://172.20.10.2:8000") };
     }
@@ -167,6 +171,13 @@ public class ReviewsApiTests
     public async Task GetReviews_ReturnsSuccessAndCorrectContentType()
     {
         var response = await _client.GetAsync("/reviews/");
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"Error: {response.StatusCode}, Content: {errorContent}");
+        }
+
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         response.Content.Headers.ContentType?.MediaType.Should().Be("application/json");
 
@@ -175,12 +186,35 @@ public class ReviewsApiTests
         data.Should().HaveCountGreaterThan(0);
 
         var firstPerson = data[0];
-        firstPerson.Id.Should().BeGreaterThan(0);
-        firstPerson.PersonName.Should().NotBeNullOrEmpty();
+        Assert.NotNull(firstPerson);
+        Assert.Equal("Elsa Zhang", firstPerson.PersonName);
         firstPerson.Rating.Should().BeInRange(1, 5);
+        firstPerson.Review.Should().Contain("from China");
+        Console.WriteLine($"First person verified by API: {firstPerson.Id}, {firstPerson.PersonName}, {firstPerson.JobRole}, {firstPerson.Rating}, {firstPerson.Review}");
 
         //       var json = System.Text.Json.JsonSerializer.Serialize(data, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
         //       Console.WriteLine(json);
+    }
+
+    //       connect DB directly
+    [Fact]
+    [Trait("Category", "Real DB")]
+    public async Task ConnectToDatabaseVerifyData()
+    {
+        using var conDB = new NpgsqlConnection(DbConnectionString);
+        await conDB.OpenAsync();
+
+        var cmd = new NpgsqlCommand("SELECT person_name, rating FROM name_list_info WHERE id = @id", conDB);
+        cmd.Parameters.AddWithValue("id", 1);
+
+        using var verifyCustomer = await cmd.ExecuteReaderAsync();
+        Assert.True(await verifyCustomer.ReadAsync(), "No data found for ID 1");
+
+       // Assert.Equal("Elsa Zhang", verifyCustomer.GetInt32(1));
+       // Assert.Equal(5, verifyCustomer.GetString(4));
+        
+        Console.WriteLine($"Veirfied with DB, the id 1 is: {verifyCustomer.GetString(0)}, rating: {verifyCustomer.GetInt32(1)}");
+
     }
 
     [Fact]
@@ -190,9 +224,11 @@ public class ReviewsApiTests
         var response = await _client.GetAsync("/");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var content = await response.Content.ReadAsStringAsync();
+        content.Should().NotBeNullOrEmpty();
         content.Should().Contain("Backend is running");
     }
 
+// OS-level command run
     [Fact]
     [Trait("Category", "Real DB")]
     public async Task TestName()
