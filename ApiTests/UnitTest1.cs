@@ -153,7 +153,7 @@ public class CustomerService
     }
 }
 
-
+// api with real DB test
 public class ReviewsApiTests
 {
     private readonly HttpClient _client;
@@ -225,6 +225,8 @@ public class ReviewsApiTests
 
     }
 }
+
+// in-memory test
 public class CustomerServiceSqliteTests
 {
     private readonly CustomerService _customerService;
@@ -260,11 +262,12 @@ public class CustomerServiceSqliteTests
         await _customerService.AddCustomerAsync(newCustomer);
 
         var retrievedCustomer = await _customerService.GetCustomerByIdAsync(newCustomer.Id);
+
         Assert.NotNull(retrievedCustomer);
         Assert.Equal("John Doe", retrievedCustomer.Name);
         Assert.Equal("elsaliu@gmail.com", retrievedCustomer.Email);
         Assert.Equal("0420991325", retrievedCustomer.Phone);
-        Console.WriteLine($"Retrieved added Customer: {retrievedCustomer.Id}, {retrievedCustomer.Name}, {retrievedCustomer.Email}, {retrievedCustomer.Phone}");
+        Console.WriteLine($"1 Retrieved added Customer: {retrievedCustomer.Id}, {retrievedCustomer.Name}, {retrievedCustomer.Email}, {retrievedCustomer.Phone}");
 
     }
 
@@ -285,12 +288,9 @@ public class CustomerServiceSqliteTests
         var existing = await _customerService.GetCustomerByIdAsync(newCustomer.Id);
 
         if (existing == null)
-
             throw new KeyNotFoundException($"Customer {newCustomer.Id} not found");
-
         else
-
-            Console.WriteLine($"Customer found before update: {existing.Name}, {existing.Email}, {existing.Phone}");
+            Console.WriteLine($"2 Customer found before update: {existing.Name}, {existing.Email}, {existing.Phone}");
 
         var updateCustomer = new Customer
         {
@@ -302,17 +302,91 @@ public class CustomerServiceSqliteTests
 
         newCustomer.Name = updateCustomer.Name;
         newCustomer.Email = updateCustomer.Email;
-        newCustomer.Phone = updateCustomer.Phone;            
+        newCustomer.Phone = updateCustomer.Phone;
 
         await _customerService.UpdateCustomerAsync(newCustomer);
 
-        var retrievedUpdateCustomer = await _customerService.GetCustomerByIdAsync(2);
+        var retrievedUpdateCustomer = await _customerService.GetCustomerByIdAsync(updateCustomer.Id);
 
-        Console.WriteLine($"Retrieved Customer after update: {retrievedUpdateCustomer?.Name}, {retrievedUpdateCustomer?.Email}, {retrievedUpdateCustomer?.Phone}");
+        Console.WriteLine($"2 Retrieved Customer after update: {retrievedUpdateCustomer?.Name}, {retrievedUpdateCustomer?.Email}, {retrievedUpdateCustomer?.Phone}");
 
         //        Assert.NotNull(retrievedUpdateCustomer);
         //    Assert.Equal("Jane Smith", retrievedUpdateCustomer.Name);
         //  Assert.Equal("janesm@gmail.com", retrievedUpdateCustomer.Email);
         //Assert.Equal("1234567890", retrievedUpdateCustomer.Phone);
+    }
+
+    [Fact]
+    [Trait("Category", "fake DB")]
+    public async Task DeleteCustomerVerify()
+    {
+        var newCustomer = new Customer
+        {
+            Id = 3,
+            Name = "Alice Johnson",
+            Email = "alice@gmail.com",
+            Phone = "9876543210"
+        };
+
+        await _customerService.AddCustomerAsync(newCustomer);
+        await _customerService.DeleteCustomerAsync(newCustomer.Id);
+
+        var deletedCustomer = await _customerService.GetCustomerByIdAsync(newCustomer.Id);
+
+        Assert.Null(deletedCustomer);
+        Console.WriteLine($"3 Customer with ID {newCustomer.Id} deleted successfully.");
+    }
+
+    [Fact]
+    [Trait("Category", "fake DB")]
+    public async Task AddCustomersBulkAsyncVerify()
+    {
+        var customersToAdd = new List<Customer>
+      {
+        new Customer
+        {
+            Id = 3,
+            Name = "Alice Johnson",
+            Email = "alice@gmail.com",
+            Phone = "9876543210"
+        },
+        new Customer
+        {
+            Id = 4,
+            Name = "Bob Smith",
+            Email = "bob@gmail.com",
+            Phone = "1231231234"
+        },
+        new Customer
+        {
+            Id = 5,
+            Name = "Charlie Brown",
+            Email = "charlie@gmail.com",
+            Phone = "5555555555"
+        }
+      };
+
+        await _customerService.AddCustomersBulkAsync(customersToAdd);
+
+        var expectedCustomers = new Dictionary<int, string>
+        {
+            {3, "Alice Johnson"},
+            {4, "Bob Smith"},
+            {5, "Charlie Brown" }
+        };
+
+        foreach (var kid in expectedCustomers)
+        {
+            var customerFetch = await _customerService.GetCustomerByIdAsync(kid.Key);
+
+            if(customerFetch == null)
+                throw new KeyNotFoundException($"Customer {kid.Value} not found");
+            else
+            {
+                Assert.Equal(kid.Value, customerFetch.Name);
+            }
+        }
+        // Optional: print all names in one line
+        Console.WriteLine("4 Customers added: " + string.Join(", ", expectedCustomers.Values));
     }
 }
